@@ -1,0 +1,38 @@
+{
+  "frames": {
+    "stand1": {
+      "frame": { "x": 0, "y": 0, "w": 416, "h": 624 },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": { "x": 0, "y": 0, "w": 416, "h": 624 },
+      "sourceSize": { "w": 416, "h": 624 }
+    },
+    "wave1": {
+      "frame": { "x": 416, "y": 0, "w": 416, "h": 624 },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": { "x": 0, "y": 0, "w": 416, "h": 624 },
+      "sourceSize": { "w": 416, "h": 624 }
+    },
+    "lay": {
+      "frame": { "x": 0, "y": 624, "w": 416, "h": 624 },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": { "x": 0, "y": 0, "w": 416, "h": 624 },
+      "sourceSize": { "w": 416, "h": 624 }
+    },
+    "run1": {
+      "frame": { "x": 416, "y": 624, "w": 416, "h": 624 },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": { "x": 0, "y": 0, "w": 416, "h": 624 },
+      "sourceSize": { "w": 416, "h": 624 }
+    }
+  },
+  "meta": {
+    "image": "rabbibot.png",
+    "format": "RGBA8888",
+    "size": { "w": 832, "h": 1248 },
+    "scale": "1"
+  }
+}

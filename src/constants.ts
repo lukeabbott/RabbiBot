@@ -41,6 +41,25 @@ export const GEM_SPIN_DURATION = 1200;
 export const GEM_DEPOSIT_RATE = 3; // gems/sec during deposit
 export const MAX_CARROT_ICONS = 10;
 
+// Crawling
+export const CRAWL_SPEED = 100;
+export const CRAWL_BODY_HEIGHT = 275;
+export const CRAWL_BODY_OFFSET_Y = 325;
+
+// Digging
+export const DIG_DELAY = 500; // ms hold to dig
+export const DIGGABLE_TILE = 8; // silica
+
+// Bombs
+export const BOMB_THROW_VELOCITY_X = 350;
+export const BOMB_THROW_VELOCITY_Y = -250;
+export const BOMB_EMP_DURATION = 10000; // 10s
+
+// Tile types
+export const TILE_TREE_TRUNK = 6;
+export const TILE_TREE_CANOPY = 7;
+export const TILE_SILICA = 8;
+
 // Robots
 export const ROBOT_SPEED = 80;
 export const ROBOT_ZAP_DAMAGE = 15;

@@ -69,7 +69,7 @@ export class MenuScene extends Phaser.Scene {
     });
 
     // Controls hint
-    this.add.text(GAME_WIDTH / 2, 445, 'Arrow Keys / WASD to move  |  Space to jump  |  Down to crouch & eat', {
+    this.add.text(GAME_WIDTH / 2, 445, 'Arrow Keys / WASD to move  |  Space to jump  |  Down to crouch & eat  |  Shift/E to interact', {
       fontSize: '12px',
       color: '#B0A0C8',
       fontFamily: 'Arial',

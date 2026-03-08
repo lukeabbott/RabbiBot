@@ -9,7 +9,16 @@ import { InventorySystem } from '../systems/InventorySystem';
 import { LevelData } from '../levels/LevelData';
 import { level1 } from '../levels/level1';
 import { level2 } from '../levels/level2';
-import { TILE_SIZE, GEM_DEPOSIT_RATE, GAME_WIDTH, GAME_HEIGHT, INVINCIBILITY_DURATION, ROBOT_ZAP_DAMAGE } from '../constants';
+import {
+  TILE_SIZE,
+  GEM_DEPOSIT_RATE,
+  GAME_WIDTH,
+  GAME_HEIGHT,
+  INVINCIBILITY_DURATION,
+  ROBOT_ZAP_DAMAGE,
+  FALL_RESPAWN_DAMAGE,
+  FALL_RESPAWN_BUFFER,
+} from '../constants';
 import { SoundManager } from '../systems/SoundManager';
 import { Robot } from '../entities/Robot';
 
@@ -34,12 +43,15 @@ export class GameScene extends Phaser.Scene {
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
   private currentLevel = 0;
   private transitioning = false;
-  private sound_mgr = new SoundManager();
+  private soundMgr = new SoundManager();
   private lastLowEnergyWarning = 0;
   private depositAccumulator = 0;
-  private depositingGems = false;
   private invincibleTimer = 0;
   private robots: Robot[] = [];
+  private portalNearby = false;
+  private portalPrompt = '';
+  private respawning = false;
+  private spawnPoint = new Phaser.Math.Vector2();
 
   constructor() {
     super('GameScene');
@@ -51,97 +63,144 @@ export class GameScene extends Phaser.Scene {
     this.carrotSprites = [];
     this.gemSprites = [];
     this.depositAccumulator = 0;
-    this.depositingGems = false;
     this.invincibleTimer = 0;
     this.robots = [];
+    this.portalNearby = false;
+    this.portalPrompt = '';
+    this.respawning = false;
+    this.lastLowEnergyWarning = 0;
   }
 
   create(): void {
-    const levelData = LEVELS[this.currentLevel];
+    const levelData = this.getLevelData();
     const worldWidth = levelData.width * TILE_SIZE;
     const worldHeight = levelData.height * TILE_SIZE;
 
-    // Set world bounds
+    this.setupWorld(levelData, worldWidth, worldHeight);
+    this.createPlayerAndSystems(levelData);
+    this.setupCollisions(levelData);
+    this.setupCamera(worldWidth, worldHeight);
+    this.launchUI(levelData);
+    this.showLevelName(levelData.name);
+  }
+
+  update(_time: number, delta: number): void {
+    if (this.transitioning) {
+      return;
+    }
+
+    this.player.update(delta);
+    this.updateInvincibility(delta);
+    this.updateEnergy(delta);
+    if (this.transitioning) {
+      return;
+    }
+
+    this.updatePortalInteraction(delta);
+    if (this.transitioning) {
+      return;
+    }
+
+    this.updateRobots();
+    this.checkFallRecovery();
+  }
+
+  private getLevelData(): LevelData {
+    const levelData = LEVELS[this.currentLevel] ?? LEVELS[0];
+    if (!LEVELS[this.currentLevel]) {
+      this.currentLevel = 0;
+    }
+    return levelData;
+  }
+
+  private setupWorld(levelData: LevelData, worldWidth: number, worldHeight: number): void {
     this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
-
-    // Fade in from the menu/transition
     this.cameras.main.fadeIn(300, 0, 0, 0);
-
-    // Create parallax backgrounds
     this.createBackgrounds(worldWidth, worldHeight);
 
-    // Create tile platforms
     this.platforms = this.physics.add.staticGroup();
     this.buildTilemap(levelData);
-
-    // Spawn collectibles
     this.spawnCollectibles(levelData);
 
-    // Spawn portal
     const portalX = levelData.portal.col * TILE_SIZE + TILE_SIZE / 2;
     const portalY = levelData.portal.row * TILE_SIZE;
     this.portal = new Portal(this, portalX, portalY, levelData.gemsRequired);
+  }
 
-    // Create player
+  private createPlayerAndSystems(levelData: LevelData): void {
     this.inputManager = new InputManager(this);
+
     const spawnX = levelData.playerSpawn.col * TILE_SIZE + TILE_SIZE / 2;
     const spawnY = levelData.playerSpawn.row * TILE_SIZE;
-    this.player = new Player(this, spawnX, spawnY, this.inputManager);
-    this.player.onJump = () => this.sound_mgr.jump();
+    this.spawnPoint.set(spawnX, spawnY);
 
-    // Systems
+    this.player = new Player(this, spawnX, spawnY, this.inputManager);
+    this.player.onJump = () => this.soundMgr.jump();
+
     this.energySystem = new EnergySystem(this);
     this.inventory = new InventorySystem(this);
+  }
 
-    // Collisions
+  private setupCollisions(levelData: LevelData): void {
     this.physics.add.collider(this.player, this.platforms);
+    this.setupCollectibleOverlaps();
+    this.spawnRobots(levelData);
+  }
 
-    // Overlaps — use inline callbacks to avoid type issues
-    this.physics.add.overlap(this.player, this.carrotSprites, (_p, obj) => {
+  private setupCollectibleOverlaps(): void {
+    this.physics.add.overlap(this.player, this.carrotSprites, (_player, obj) => {
       const carrot = obj as Carrot;
-      if (carrot.active && this.player.isCrouching) {
-        carrot.collect();
-        this.inventory.addCarrot();
-        this.sound_mgr.collectCarrot();
+      if (!carrot.active || !this.player.isCrouching) {
+        return;
       }
+
+      carrot.collect();
+      this.inventory.addCarrot();
+      this.soundMgr.collectCarrot();
     });
 
-    this.physics.add.overlap(this.player, this.gemSprites, (_p, obj) => {
+    this.physics.add.overlap(this.player, this.gemSprites, (_player, obj) => {
       const gem = obj as Gem;
-      if (gem.active) {
-        gem.collect();
-        this.inventory.addGem();
-        this.sound_mgr.collectGem();
+      if (!gem.active) {
+        return;
       }
+
+      gem.collect();
+      this.inventory.addGem();
+      this.soundMgr.collectGem();
     });
+  }
 
-    this.physics.add.overlap(this.player, this.portal, () => {
-      if (this.portal.activated) {
-        this.enterPortal();
-      } else {
-        this.depositingGems = true;
-      }
-    });
-
-    // Camera
-    this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
-    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-
-    // Spawn robots
-    if (levelData.robots) {
-      levelData.robots.forEach(rs => {
-        const rx = rs.col * TILE_SIZE + TILE_SIZE / 2;
-        const ry = rs.row * TILE_SIZE;
-        const robot = new Robot(this, rx, ry, rs.patrolLeft * TILE_SIZE, rs.patrolRight * TILE_SIZE + TILE_SIZE);
-        this.robots.push(robot);
-      });
-      this.physics.add.collider(this.robots, this.platforms);
-      this.physics.add.overlap(this.player, this.robots, (_p, obj) => {
-        this.onRobotHit(obj as Robot);
-      });
+  private spawnRobots(levelData: LevelData): void {
+    if (!levelData.robots?.length) {
+      return;
     }
 
-    // Launch UI overlay
+    levelData.robots.forEach(robotSpawn => {
+      const x = robotSpawn.col * TILE_SIZE + TILE_SIZE / 2;
+      const y = robotSpawn.row * TILE_SIZE;
+      const robot = new Robot(
+        this,
+        x,
+        y,
+        robotSpawn.patrolLeft * TILE_SIZE,
+        robotSpawn.patrolRight * TILE_SIZE + TILE_SIZE,
+      );
+      this.robots.push(robot);
+    });
+
+    this.physics.add.collider(this.robots, this.platforms);
+    this.physics.add.overlap(this.player, this.robots, (_player, obj) => {
+      this.onRobotHit(obj as Robot);
+    });
+  }
+
+  private setupCamera(worldWidth: number, worldHeight: number): void {
+    this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+  }
+
+  private launchUI(levelData: LevelData): void {
     this.scene.launch('UIScene', {
       energy: this.energySystem.energy,
       carrots: 0,
@@ -149,9 +208,11 @@ export class GameScene extends Phaser.Scene {
       levelName: levelData.name,
       gemsRequired: levelData.gemsRequired,
     });
+    this.emitPortalPrompt('');
+  }
 
-    // Level name display
-    const nameText = this.add.text(spawnX, spawnY - 60, levelData.name, {
+  private showLevelName(levelName: string): void {
+    const nameText = this.add.text(this.spawnPoint.x, this.spawnPoint.y - 60, levelName, {
       fontSize: '20px',
       color: '#8BE8CB',
       fontFamily: 'Arial',
@@ -169,20 +230,19 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  update(_time: number, delta: number): void {
-    this.player.update(delta);
-
-    // Invincibility timer
-    if (this.invincibleTimer > 0) {
-      this.invincibleTimer -= delta;
-      // Flicker effect
-      this.player.setAlpha(Math.sin(this.invincibleTimer * 0.02) > 0 ? 1 : 0.3);
-      if (this.invincibleTimer <= 0) {
-        this.player.setAlpha(1);
-      }
+  private updateInvincibility(delta: number): void {
+    if (this.invincibleTimer <= 0) {
+      return;
     }
 
-    // Update energy system
+    this.invincibleTimer -= delta;
+    this.player.setAlpha(Math.sin(this.invincibleTimer * 0.02) > 0 ? 1 : 0.3);
+    if (this.invincibleTimer <= 0) {
+      this.player.setAlpha(1);
+    }
+  }
+
+  private updateEnergy(delta: number): void {
     const result = this.energySystem.update(
       delta,
       this.player.isMoving,
@@ -192,76 +252,162 @@ export class GameScene extends Phaser.Scene {
 
     if (result.consumed) {
       this.inventory.consumeCarrot();
-      this.sound_mgr.autoEat();
+      this.soundMgr.autoEat();
     }
 
     if (result.gameOver) {
-      this.sound_mgr.gameOver();
-      this.scene.stop('UIScene');
-      this.scene.start('GameOverScene', { level: this.currentLevel });
+      this.triggerGameOver();
+      return;
     }
 
-    // Low energy warning
     if (this.energySystem.percent < 0.25 && this.energySystem.percent > 0) {
       this.lastLowEnergyWarning += delta;
       if (this.lastLowEnergyWarning > 3000) {
-        this.sound_mgr.lowEnergy();
+        this.soundMgr.lowEnergy();
         this.lastLowEnergyWarning = 0;
       }
     } else {
       this.lastLowEnergyWarning = 0;
     }
+  }
 
-    // Gem deposit flow
-    if (this.depositingGems && this.inventory.gems > 0 && !this.portal.isFullyCharged) {
-      this.depositAccumulator += delta;
-      const interval = 1000 / GEM_DEPOSIT_RATE;
-      while (this.depositAccumulator >= interval && this.inventory.gems > 0 && !this.portal.isFullyCharged) {
-        this.depositAccumulator -= interval;
-        this.inventory.depositGem();
-        this.sound_mgr.depositGem();
+  private updatePortalInteraction(delta: number): void {
+    this.portalNearby = this.physics.overlap(this.player, this.portal);
 
-        // Create gem image that flies to portal
-        const gemImg = this.add.image(this.player.x, this.player.y - 10, 'gem');
-        this.tweens.add({
-          targets: gemImg,
-          x: this.portal.x,
-          y: this.portal.y - 20,
-          scaleX: 0.5,
-          scaleY: 0.5,
-          alpha: 0.5,
-          duration: 300,
-          ease: 'Quad.easeIn',
-          onComplete: () => {
-            this.portal.onGemDeposited();
-            gemImg.destroy();
-          },
-        });
-      }
-
-    } else {
+    if (!this.portalNearby) {
       this.depositAccumulator = 0;
+      this.emitPortalPrompt('');
+      return;
     }
-    // Reset deposit flag after processing — overlap callback will set it again next physics step
-    this.depositingGems = false;
 
-    // Check if portal should activate (outside deposit block — tweens complete async)
+    const prompt = this.getPortalPrompt();
+    this.emitPortalPrompt(prompt);
+
+    if (this.portal.activated) {
+      if (this.inputManager.interactPressed) {
+        this.enterPortal();
+      }
+      return;
+    }
+
+    const wantsToDeposit = this.inputManager.interact && this.inventory.gems > 0 && !this.portal.isFullyCharged;
+    if (!wantsToDeposit) {
+      this.depositAccumulator = 0;
+      return;
+    }
+
+    this.depositAccumulator += delta;
+    const interval = 1000 / GEM_DEPOSIT_RATE;
+
+    while (this.depositAccumulator >= interval && this.inventory.gems > 0 && !this.portal.isFullyCharged) {
+      this.depositAccumulator -= interval;
+      this.inventory.depositGem();
+      this.soundMgr.depositGem();
+      this.animateGemDeposit();
+    }
+
     if (this.portal.isFullyCharged && !this.portal.activated) {
       this.portal.activate();
-      this.sound_mgr.portalActivate();
+      this.soundMgr.portalActivate();
+      this.emitPortalPrompt('Portal charged! Press Shift or E to enter');
+    }
+  }
+
+  private getPortalPrompt(): string {
+    if (this.portal.activated) {
+      return 'Press Shift or E to enter the portal';
     }
 
-    // Update robots
+    if (this.inventory.gems > 0) {
+      return `Hold Shift or E to deposit gems (${this.inventory.gems} held)`;
+    }
+
+    const missing = this.portal.gemsStillNeeded;
+    return `Collect ${missing} more gem${missing === 1 ? '' : 's'} to charge the portal`;
+  }
+
+  private emitPortalPrompt(message: string): void {
+    if (this.portalPrompt === message) {
+      return;
+    }
+
+    this.portalPrompt = message;
+    this.events.emit('portal-prompt-changed', message);
+  }
+
+  private animateGemDeposit(): void {
+    const gemImage = this.add.image(this.player.x, this.player.y - 10, 'gem');
+    this.tweens.add({
+      targets: gemImage,
+      x: this.portal.x,
+      y: this.portal.y - 20,
+      scaleX: 0.5,
+      scaleY: 0.5,
+      alpha: 0.5,
+      duration: 300,
+      ease: 'Quad.easeIn',
+      onComplete: () => {
+        this.portal.onGemDeposited();
+        gemImage.destroy();
+      },
+    });
+  }
+
+  private updateRobots(): void {
     this.robots.forEach(robot => robot.update());
   }
 
+  private checkFallRecovery(): void {
+    const levelData = this.getLevelData();
+    const worldHeight = levelData.height * TILE_SIZE;
+    if (this.respawning || this.player.y <= worldHeight + FALL_RESPAWN_BUFFER) {
+      return;
+    }
+
+    this.respawnPlayerFromFall();
+  }
+
+  private respawnPlayerFromFall(): void {
+    this.respawning = true;
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+
+    body.stop();
+    this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
+    this.player.setAlpha(1);
+    this.depositAccumulator = 0;
+    this.emitPortalPrompt('');
+    this.invincibleTimer = INVINCIBILITY_DURATION;
+    this.energySystem.damage(FALL_RESPAWN_DAMAGE);
+    this.soundMgr.zap();
+    this.cameras.main.flash(250, 255, 255, 255);
+
+    if (this.energySystem.energy <= 0 && this.inventory.carrots <= 0) {
+      this.triggerGameOver();
+      return;
+    }
+
+    this.time.delayedCall(200, () => {
+      this.respawning = false;
+    });
+  }
+
+  private triggerGameOver(): void {
+    if (this.transitioning) {
+      return;
+    }
+
+    this.transitioning = true;
+    this.soundMgr.gameOver();
+    this.emitPortalPrompt('');
+    this.scene.stop('UIScene');
+    this.scene.start('GameOverScene', { level: this.currentLevel });
+  }
+
   private createBackgrounds(worldWidth: number, worldHeight: number): void {
-    // Layer 1: Sky (fixed, no scroll)
     this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_sky')
       .setScrollFactor(0)
       .setDepth(-30);
 
-    // Layer 2: Cityscape (slow parallax)
     const cityTiles = Math.ceil(worldWidth / 800) + 1;
     for (let i = 0; i < cityTiles; i++) {
       this.add.image(i * 800 + 400, worldHeight - 240, 'bg_city')
@@ -269,7 +415,6 @@ export class GameScene extends Phaser.Scene {
         .setDepth(-20);
     }
 
-    // Layer 3: Flora (medium parallax)
     const floraTiles = Math.ceil(worldWidth / 800) + 1;
     for (let i = 0; i < floraTiles; i++) {
       this.add.image(i * 800 + 400, worldHeight - 240, 'bg_flora')
@@ -292,13 +437,16 @@ export class GameScene extends Phaser.Scene {
           }
           continue;
         }
-        const texKey = TILE_TEXTURES[tileType];
-        if (!texKey) continue;
+
+        const textureKey = TILE_TEXTURES[tileType];
+        if (!textureKey) {
+          continue;
+        }
 
         const tile = this.platforms.create(
           col * TILE_SIZE + TILE_SIZE / 2,
           row * TILE_SIZE + TILE_SIZE / 2,
-          texKey,
+          textureKey,
         ) as Phaser.Physics.Arcade.Sprite;
         tile.setImmovable(true);
         tile.refreshBody();
@@ -309,7 +457,6 @@ export class GameScene extends Phaser.Scene {
   private spawnCollectibles(level: LevelData): void {
     level.carrots.forEach(spawn => {
       const x = spawn.col * TILE_SIZE + TILE_SIZE / 2;
-      // Place carrots embedded in the ground — bottom half buried, top poking out
       const y = (spawn.row + 1) * TILE_SIZE - 6;
       const carrot = new Carrot(this, x, y);
       this.carrotSprites.push(carrot);
@@ -323,44 +470,40 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private onRobotHit(_robot: Robot): void {
-    if (this.invincibleTimer > 0) return;
+  private onRobotHit(robot: Robot): void {
+    if (this.invincibleTimer > 0) {
+      return;
+    }
+
     this.invincibleTimer = INVINCIBILITY_DURATION;
     this.energySystem.damage(ROBOT_ZAP_DAMAGE);
-    this.sound_mgr.zap();
+    this.soundMgr.zap();
 
-    // Knockback — push player away from robot
     const body = this.player.body as Phaser.Physics.Arcade.Body;
-    const dir = this.player.x < _robot.x ? -1 : 1;
-    body.setVelocityX(dir * 250);
+    const direction = this.player.x < robot.x ? -1 : 1;
+    body.setVelocityX(direction * 250);
     body.setVelocityY(-200);
   }
 
   private enterPortal(): void {
-    if (!this.portal.activated || this.transitioning) return;
-    this.transitioning = true;
-    this.sound_mgr.portalEnter();
+    if (!this.portal.activated || this.transitioning) {
+      return;
+    }
 
-    // Transition effect
+    this.transitioning = true;
+    this.soundMgr.portalEnter();
+    this.emitPortalPrompt('');
+
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.stop('UIScene');
       const nextLevel = this.currentLevel + 1;
-      if (nextLevel < LEVELS.length) {
-        this.scene.start('LevelCompleteScene', {
-          level: this.currentLevel,
-          gems: this.inventory.depositedGems,
-          carrots: this.inventory.carrots,
-          nextLevel,
-        });
-      } else {
-        this.scene.start('LevelCompleteScene', {
-          level: this.currentLevel,
-          gems: this.inventory.depositedGems,
-          carrots: this.inventory.carrots,
-          nextLevel: -1,
-        });
-      }
+      this.scene.start('LevelCompleteScene', {
+        level: this.currentLevel,
+        gems: this.inventory.depositedGems,
+        carrots: this.inventory.carrots,
+        nextLevel: nextLevel < LEVELS.length ? nextLevel : -1,
+      });
     });
   }
 }

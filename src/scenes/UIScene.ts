@@ -8,6 +8,7 @@ export class UIScene extends Phaser.Scene {
   private gemText!: Phaser.GameObjects.Text;
   private portalText!: Phaser.GameObjects.Text;
   private levelText!: Phaser.GameObjects.Text;
+  private promptText!: Phaser.GameObjects.Text;
   private currentEnergy = ENERGY_MAX;
   private gemsRequired = 12;
 
@@ -67,12 +68,22 @@ export class UIScene extends Phaser.Scene {
       strokeThickness: 2,
     }).setOrigin(0.5, 0);
 
+    this.promptText = this.add.text(GAME_WIDTH / 2, 452, '', {
+      fontSize: '14px',
+      color: '#FFD93D',
+      fontFamily: 'Arial',
+      stroke: '#000',
+      strokeThickness: 3,
+      align: 'center',
+    }).setOrigin(0.5, 1);
+
     // Listen to game scene events
     const gameScene = this.scene.get('GameScene');
     gameScene.events.on('energy-changed', this.updateEnergy, this);
     gameScene.events.on('carrot-changed', this.updateCarrots, this);
     gameScene.events.on('gem-changed', this.updateGems, this);
     gameScene.events.on('deposited-gems-changed', this.updateDeposited, this);
+    gameScene.events.on('portal-prompt-changed', this.updatePrompt, this);
 
     // Cleanup on shutdown
     this.events.on('shutdown', () => {
@@ -80,6 +91,7 @@ export class UIScene extends Phaser.Scene {
       gameScene.events.off('carrot-changed', this.updateCarrots, this);
       gameScene.events.off('gem-changed', this.updateGems, this);
       gameScene.events.off('deposited-gems-changed', this.updateDeposited, this);
+      gameScene.events.off('portal-prompt-changed', this.updatePrompt, this);
     });
   }
 
@@ -98,6 +110,10 @@ export class UIScene extends Phaser.Scene {
 
   private updateDeposited(deposited: number): void {
     this.portalText.setText(`Portal: ${deposited} / ${this.gemsRequired}`);
+  }
+
+  private updatePrompt(message: string): void {
+    this.promptText.setText(message);
   }
 
   private updateCarrotIcons(count: number): void {

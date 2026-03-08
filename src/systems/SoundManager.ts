@@ -1,32 +1,43 @@
 export class SoundManager {
-  private ctx: AudioContext | null = null;
+  private static ctx: AudioContext | null = null;
 
   private getCtx(): AudioContext {
-    if (!this.ctx) {
-      this.ctx = new AudioContext();
+    if (!SoundManager.ctx) {
+      SoundManager.ctx = new AudioContext();
     }
-    return this.ctx;
+    if (SoundManager.ctx.state === 'suspended') {
+      void SoundManager.ctx.resume();
+    }
+    return SoundManager.ctx;
   }
 
-  private playTone(freq: number, duration: number, type: OscillatorType = 'square', volume = 0.15, freqEnd?: number): void {
+  private playTone(
+    freq: number,
+    duration: number,
+    type: OscillatorType = 'square',
+    volume = 0.15,
+    freqEnd?: number,
+    delay = 0,
+  ): void {
     const ctx = this.getCtx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
+    const startTime = ctx.currentTime + delay;
 
     osc.type = type;
-    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    osc.frequency.setValueAtTime(freq, startTime);
     if (freqEnd !== undefined) {
-      osc.frequency.linearRampToValueAtTime(freqEnd, ctx.currentTime + duration);
+      osc.frequency.linearRampToValueAtTime(freqEnd, startTime + duration);
     }
 
-    gain.gain.setValueAtTime(volume, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    gain.gain.setValueAtTime(volume, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + duration);
+    osc.start(startTime);
+    osc.stop(startTime + duration);
   }
 
   jump(): void {
@@ -34,16 +45,15 @@ export class SoundManager {
   }
 
   collectCarrot(): void {
-    const ctx = this.getCtx();
     // Two quick ascending notes
     this.playTone(523, 0.08, 'square', 0.1); // C5
-    setTimeout(() => this.playTone(659, 0.12, 'square', 0.1), 60); // E5
+    this.playTone(659, 0.12, 'square', 0.1, undefined, 0.06); // E5
   }
 
   collectGem(): void {
     // Quick bright chime
     this.playTone(880, 0.06, 'sine', 0.1); // A5
-    setTimeout(() => this.playTone(1108, 0.1, 'sine', 0.1), 50); // C#6
+    this.playTone(1108, 0.1, 'sine', 0.1, undefined, 0.05); // C#6
   }
 
   depositGem(): void {
@@ -55,21 +65,21 @@ export class SoundManager {
     // Ascending arpeggio
     const notes = [523, 659, 784, 1047]; // C E G C
     notes.forEach((freq, i) => {
-      setTimeout(() => this.playTone(freq, 0.2, 'sine', 0.1), i * 100);
+      this.playTone(freq, 0.2, 'sine', 0.1, undefined, i * 0.1);
     });
   }
 
   portalEnter(): void {
     // Shimmery sweep up
     this.playTone(400, 0.5, 'sine', 0.12, 1200);
-    setTimeout(() => this.playTone(600, 0.4, 'triangle', 0.08, 1400), 100);
+    this.playTone(600, 0.4, 'triangle', 0.08, 1400, 0.1);
   }
 
   gameOver(): void {
     // Descending sad tones
     const notes = [440, 370, 330, 262]; // A G# E C
     notes.forEach((freq, i) => {
-      setTimeout(() => this.playTone(freq, 0.25, 'triangle', 0.1), i * 150);
+      this.playTone(freq, 0.25, 'triangle', 0.1, undefined, i * 0.15);
     });
   }
 
@@ -77,10 +87,10 @@ export class SoundManager {
     // Victory fanfare
     const notes = [523, 659, 784, 1047, 784, 1047]; // C E G C G C
     notes.forEach((freq, i) => {
-      setTimeout(() => this.playTone(freq, 0.18, 'square', 0.08), i * 100);
+      this.playTone(freq, 0.18, 'square', 0.08, undefined, i * 0.1);
     });
     // Final sustained note
-    setTimeout(() => this.playTone(1047, 0.5, 'sine', 0.12), 600);
+    this.playTone(1047, 0.5, 'sine', 0.12, undefined, 0.6);
   }
 
   menuSelect(): void {
@@ -90,13 +100,13 @@ export class SoundManager {
   autoEat(): void {
     // Soft munch sound
     this.playTone(200, 0.08, 'sawtooth', 0.06, 150);
-    setTimeout(() => this.playTone(180, 0.06, 'sawtooth', 0.05, 130), 60);
+    this.playTone(180, 0.06, 'sawtooth', 0.05, 130, 0.06);
   }
 
   zap(): void {
     // Electric sawtooth sweep
     this.playTone(800, 0.15, 'sawtooth', 0.12, 200);
-    setTimeout(() => this.playTone(600, 0.1, 'sawtooth', 0.08, 100), 50);
+    this.playTone(600, 0.1, 'sawtooth', 0.08, 100, 0.05);
   }
 
   lowEnergy(): void {

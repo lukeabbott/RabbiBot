@@ -4,8 +4,11 @@ export class InputManager {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private shiftKey!: Phaser.Input.Keyboard.Key;
+  private interactKey!: Phaser.Input.Keyboard.Key;
   private spaceJustPressed = false;
   private prevSpaceDown = false;
+  private interactJustPressed = false;
+  private prevInteractDown = false;
 
   constructor(scene: Phaser.Scene) {
     const kb = scene.input.keyboard!;
@@ -17,12 +20,17 @@ export class InputManager {
       D: kb.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     };
     this.shiftKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
+    this.interactKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.E);
   }
 
   update(): void {
     const spaceDown = this.cursors.space.isDown;
     this.spaceJustPressed = spaceDown && !this.prevSpaceDown;
     this.prevSpaceDown = spaceDown;
+
+    const interactDown = this.shiftKey.isDown || this.interactKey.isDown;
+    this.interactJustPressed = interactDown && !this.prevInteractDown;
+    this.prevInteractDown = interactDown;
   }
 
   get left(): boolean {
@@ -39,6 +47,14 @@ export class InputManager {
 
   get shift(): boolean {
     return this.shiftKey.isDown;
+  }
+
+  get interact(): boolean {
+    return this.shiftKey.isDown || this.interactKey.isDown;
+  }
+
+  get interactPressed(): boolean {
+    return this.interactJustPressed;
   }
 
   get down(): boolean {

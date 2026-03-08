@@ -108,4 +108,8 @@ export class Portal extends Phaser.Physics.Arcade.Sprite {
   get isFullyCharged(): boolean {
     return this.gemsDeposited >= this.gemsRequired;
   }
+
+  get gemsStillNeeded(): number {
+    return Math.max(0, this.gemsRequired - this.gemsDeposited);
+  }
 }

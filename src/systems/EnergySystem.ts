@@ -33,13 +33,14 @@ export class EnergySystem {
     if (!isMoving && isOnGround && this.energy < ENERGY_AUTO_EAT_THRESHOLD && carrotCount > 0) {
       this.autoEatTimer += delta;
       if (this.autoEatTimer >= ENERGY_AUTO_EAT_INTERVAL) {
-        this.autoEatTimer = 0;
-        this.energy = Math.min(ENERGY_MAX, this.energy + ENERGY_RESTORE);
-        consumed = true;
-        this.scene.events.emit('energy-changed', this.energy);
+        consumed = this.consumeCarrotForEnergy();
       }
     } else {
       this.autoEatTimer = 0;
+    }
+
+    if (this.energy <= 0 && carrotCount > 0) {
+      consumed = this.consumeCarrotForEnergy() || consumed;
     }
 
     // Emit energy update
@@ -49,6 +50,13 @@ export class EnergySystem {
     const gameOver = this.energy <= 0 && carrotCount <= 0;
 
     return { consumed, gameOver };
+  }
+
+  private consumeCarrotForEnergy(): boolean {
+    this.autoEatTimer = 0;
+    this.energy = Math.min(ENERGY_MAX, this.energy + ENERGY_RESTORE);
+    this.scene.events.emit('energy-changed', this.energy);
+    return true;
   }
 
   damage(amount: number): void {

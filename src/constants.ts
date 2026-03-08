@@ -26,11 +26,13 @@ export const COYOTE_TIME = 150; // ms
 
 // Energy
 export const ENERGY_MAX = 100;
-export const ENERGY_DRAIN_MOVING = 3;    // per second
-export const ENERGY_DRAIN_IDLE = 0.5;    // per second
-export const ENERGY_RESTORE = 25;         // per carrot consumed
-export const ENERGY_AUTO_EAT_THRESHOLD = 70;
+export const ENERGY_DRAIN_MOVING = 2.4;  // per second
+export const ENERGY_DRAIN_IDLE = 0.35;   // per second
+export const ENERGY_RESTORE = 30;        // per carrot consumed
+export const ENERGY_AUTO_EAT_THRESHOLD = 55;
 export const ENERGY_AUTO_EAT_INTERVAL = 1500; // ms
+export const FALL_RESPAWN_DAMAGE = 20;
+export const FALL_RESPAWN_BUFFER = 160;
 
 // Collectibles
 export const CARROT_FLOAT_AMPLITUDE = 6;
@@ -41,8 +43,8 @@ export const MAX_CARROT_ICONS = 10;
 
 // Robots
 export const ROBOT_SPEED = 80;
-export const ROBOT_ZAP_DAMAGE = 20;
-export const INVINCIBILITY_DURATION = 1500; // ms
+export const ROBOT_ZAP_DAMAGE = 15;
+export const INVINCIBILITY_DURATION = 1700; // ms
 
 // Canvas
 export const GAME_WIDTH = 800;

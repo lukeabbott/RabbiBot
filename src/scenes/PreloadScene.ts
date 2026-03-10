@@ -25,6 +25,7 @@ export class PreloadScene extends Phaser.Scene {
     this.generateGem();
     this.generatePortal();
     this.generateRobot();
+    this.generateBomb();
     this.generateBackgrounds();
     this.scene.start('MenuScene');
   }
@@ -248,6 +249,41 @@ export class PreloadScene extends Phaser.Scene {
     g.fillRect(w - 12, h - 4, 8, 4);
 
     g.generateTexture('robot', w, h + 4);
+    g.destroy();
+  }
+
+  private generateBomb(): void {
+    const g = this.add.graphics();
+    const s = 24;
+
+    // Bomb body — dark sphere
+    g.fillStyle(0x2d3436);
+    g.fillCircle(12, 14, 10);
+
+    // Circuit traces on body
+    g.lineStyle(1.5, COLORS.CIRCUIT_GOLD, 0.7);
+    g.lineBetween(12, 6, 12, 22);
+    g.lineBetween(4, 14, 20, 14);
+
+    // Circuit nodes
+    g.fillStyle(COLORS.CIRCUIT_GOLD, 0.8);
+    g.fillCircle(12, 10, 2);
+    g.fillCircle(12, 18, 2);
+    g.fillCircle(8, 14, 1.5);
+    g.fillCircle(16, 14, 1.5);
+
+    // Fuse/antenna
+    g.lineStyle(2, 0x636e72);
+    g.lineBetween(12, 4, 12, 0);
+    // Fuse spark
+    g.fillStyle(0xff4444);
+    g.fillCircle(12, 0, 2.5);
+
+    // Highlight
+    g.fillStyle(0xffffff, 0.2);
+    g.fillCircle(9, 11, 3);
+
+    g.generateTexture('bomb', s, s);
     g.destroy();
   }
 

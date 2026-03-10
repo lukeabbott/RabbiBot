@@ -5,6 +5,7 @@ export class InventorySystem {
   carrots: number = 0;
   gems: number = 0;
   depositedGems: number = 0;
+  bombs: number = 0;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -40,6 +41,20 @@ export class InventorySystem {
     return false;
   }
 
+  addBomb(): void {
+    this.bombs++;
+    this.scene.events.emit('bomb-changed', this.bombs);
+  }
+
+  useBomb(): boolean {
+    if (this.bombs > 0) {
+      this.bombs--;
+      this.scene.events.emit('bomb-changed', this.bombs);
+      return true;
+    }
+    return false;
+  }
+
   gemsStillNeeded(required: number): number {
     return Math.max(0, required - this.depositedGems);
   }
@@ -48,5 +63,6 @@ export class InventorySystem {
     this.carrots = 0;
     this.gems = 0;
     this.depositedGems = 0;
+    this.bombs = 0;
   }
 }

@@ -80,7 +80,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   update(delta: number): void {
-    this.inputMgr.update();
+    this.inputMgr.update(delta);
     const body = this.body as Phaser.Physics.Arcade.Body;
     const onGround = body.blocked.down;
 

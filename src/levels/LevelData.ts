@@ -20,5 +20,6 @@ export interface LevelData {
   gems: SpawnPoint[];
   portal: SpawnPoint;
   robots?: RobotSpawn[];
+  bombs?: SpawnPoint[];
   gemsRequired: number;
 }

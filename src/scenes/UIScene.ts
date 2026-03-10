@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ENERGY_MAX, COLORS, GAME_WIDTH, MAX_CARROT_ICONS } from '../constants';
+import { ENERGY_MAX, COLORS, GAME_WIDTH, MAX_CARROT_ICONS, MAX_BOMBS } from '../constants';
 
 export class UIScene extends Phaser.Scene {
   private energyBar!: Phaser.GameObjects.Graphics;
@@ -9,6 +9,7 @@ export class UIScene extends Phaser.Scene {
   private portalText!: Phaser.GameObjects.Text;
   private levelText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
+  private bombText!: Phaser.GameObjects.Text;
   private currentEnergy = ENERGY_MAX;
   private gemsRequired = 12;
 
@@ -59,6 +60,15 @@ export class UIScene extends Phaser.Scene {
       strokeThickness: 2,
     });
 
+    // Bomb counter
+    this.bombText = this.add.text(GAME_WIDTH - 180, 56, 'Bombs: 0', {
+      fontSize: '14px',
+      color: '#ff4444',
+      fontFamily: 'Arial',
+      stroke: '#000',
+      strokeThickness: 2,
+    });
+
     // Level name
     this.levelText = this.add.text(GAME_WIDTH / 2, 12, data.levelName, {
       fontSize: '14px',
@@ -84,6 +94,7 @@ export class UIScene extends Phaser.Scene {
     gameScene.events.on('gem-changed', this.updateGems, this);
     gameScene.events.on('deposited-gems-changed', this.updateDeposited, this);
     gameScene.events.on('portal-prompt-changed', this.updatePrompt, this);
+    gameScene.events.on('bomb-changed', this.updateBombs, this);
 
     // Cleanup on shutdown
     this.events.on('shutdown', () => {
@@ -92,6 +103,7 @@ export class UIScene extends Phaser.Scene {
       gameScene.events.off('gem-changed', this.updateGems, this);
       gameScene.events.off('deposited-gems-changed', this.updateDeposited, this);
       gameScene.events.off('portal-prompt-changed', this.updatePrompt, this);
+      gameScene.events.off('bomb-changed', this.updateBombs, this);
     });
   }
 
@@ -114,6 +126,10 @@ export class UIScene extends Phaser.Scene {
 
   private updatePrompt(message: string): void {
     this.promptText.setText(message);
+  }
+
+  private updateBombs(count: number): void {
+    this.bombText.setText(`Bombs: ${count}`);
   }
 
   private updateCarrotIcons(count: number): void {

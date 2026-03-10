@@ -18,9 +18,15 @@ import {
   ROBOT_ZAP_DAMAGE,
   FALL_RESPAWN_DAMAGE,
   FALL_RESPAWN_BUFFER,
+  BOMB_EMP_DURATION,
+  MAX_BOMBS,
+  BOMB_THROW_VELOCITY_X,
+  BOMB_THROW_VELOCITY_Y,
 } from '../constants';
 import { SoundManager } from '../systems/SoundManager';
 import { Robot } from '../entities/Robot';
+import { Bomb } from '../entities/Bomb';
+import { ThrownBomb } from '../entities/ThrownBomb';
 
 const LEVELS: LevelData[] = [level1, level2];
 
@@ -48,10 +54,13 @@ export class GameScene extends Phaser.Scene {
   private depositAccumulator = 0;
   private invincibleTimer = 0;
   private robots: Robot[] = [];
+  private bombSprites: Bomb[] = [];
+  private thrownBombs: ThrownBomb[] = [];
   private portalNearby = false;
   private portalPrompt = '';
   private respawning = false;
   private spawnPoint = new Phaser.Math.Vector2();
+  private throwPreview!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super('GameScene');
@@ -65,6 +74,8 @@ export class GameScene extends Phaser.Scene {
     this.depositAccumulator = 0;
     this.invincibleTimer = 0;
     this.robots = [];
+    this.bombSprites = [];
+    this.thrownBombs = [];
     this.portalNearby = false;
     this.portalPrompt = '';
     this.respawning = false;
@@ -82,6 +93,7 @@ export class GameScene extends Phaser.Scene {
     this.setupCamera(worldWidth, worldHeight);
     this.launchUI(levelData);
     this.showLevelName(levelData.name);
+    this.throwPreview = this.add.graphics().setDepth(20);
   }
 
   update(_time: number, delta: number): void {
@@ -102,6 +114,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.updateRobots();
+    this.updateBombPreview();
+    this.updateBombThrow();
     this.checkFallRecovery();
   }
 
@@ -168,6 +182,17 @@ export class GameScene extends Phaser.Scene {
       gem.collect();
       this.inventory.addGem();
       this.soundMgr.collectGem();
+    });
+
+    this.physics.add.overlap(this.player, this.bombSprites, (_player, obj) => {
+      const bomb = obj as Bomb;
+      if (!bomb.active || this.inventory.bombs >= MAX_BOMBS) {
+        return;
+      }
+
+      bomb.collect();
+      this.inventory.addBomb();
+      this.soundMgr.collectGem(); // reuse chime for pickup
     });
   }
 
@@ -280,13 +305,16 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    if (this.portal.isFullyCharged && !this.portal.activated) {
+      this.portal.activate();
+      this.soundMgr.portalActivate();
+    }
+
     const prompt = this.getPortalPrompt();
     this.emitPortalPrompt(prompt);
 
     if (this.portal.activated) {
-      if (this.inputManager.interactPressed) {
-        this.enterPortal();
-      }
+      this.enterPortal();
       return;
     }
 
@@ -306,11 +334,6 @@ export class GameScene extends Phaser.Scene {
       this.animateGemDeposit();
     }
 
-    if (this.portal.isFullyCharged && !this.portal.activated) {
-      this.portal.activate();
-      this.soundMgr.portalActivate();
-      this.emitPortalPrompt('Portal charged! Press Shift or E to enter');
-    }
   }
 
   private getPortalPrompt(): string {
@@ -357,6 +380,86 @@ export class GameScene extends Phaser.Scene {
     this.robots.forEach(robot => robot.update());
   }
 
+  private updateBombThrow(): void {
+    if (this.inputManager.throwPressed && this.inventory.bombs > 0) {
+      this.inventory.useBomb();
+      this.throwPreview.clear();
+      const velocity = this.getBombVelocity();
+      const bomb = new ThrownBomb(this, this.player.x, this.player.y - 10, velocity.x, velocity.y);
+      this.thrownBombs.push(bomb);
+      this.soundMgr.throwBomb();
+
+      // Collide with platforms — fizzle on hit
+      this.physics.add.collider(bomb, this.platforms, () => {
+        this.removeThrownBomb(bomb);
+        bomb.fizzle();
+      });
+
+      // Overlap with robots — stun on hit
+      this.physics.add.overlap(bomb, this.robots, (_b, obj) => {
+        const robot = obj as Robot;
+        if (robot.stunned) {
+          return;
+        }
+        robot.stun(BOMB_EMP_DURATION);
+        this.soundMgr.bombEmp();
+        this.removeThrownBomb(bomb);
+        bomb.fizzle();
+      });
+
+      this.time.delayedCall(2500, () => {
+        if (!bomb.active) {
+          return;
+        }
+        this.removeThrownBomb(bomb);
+        bomb.fizzle();
+      });
+    }
+  }
+
+  private updateBombPreview(): void {
+    this.throwPreview.clear();
+    if (!this.inputManager.throwCharging || this.inventory.bombs <= 0 || this.transitioning) {
+      return;
+    }
+
+    const startX = this.player.x;
+    const startY = this.player.y - 10;
+    const velocity = this.getBombVelocity();
+    const gravityY = this.physics.world.gravity.y;
+    const previewDuration = 0.25;
+    const steps = 8;
+
+    this.throwPreview.lineStyle(3, 0xffffff, 0.35);
+    this.throwPreview.beginPath();
+
+    for (let i = 0; i <= steps; i++) {
+      const t = (previewDuration * i) / steps;
+      const x = startX + velocity.x * t;
+      const y = startY + velocity.y * t + 0.5 * gravityY * t * t;
+      if (i === 0) {
+        this.throwPreview.moveTo(x, y);
+      } else {
+        this.throwPreview.lineTo(x, y);
+      }
+    }
+
+    this.throwPreview.strokePath();
+  }
+
+  private getBombVelocity(): Phaser.Math.Vector2 {
+    const horizontal = this.player.flipX ? -BOMB_THROW_VELOCITY_X : BOMB_THROW_VELOCITY_X;
+    const lift = Phaser.Math.Linear(BOMB_THROW_VELOCITY_Y * 0.55, BOMB_THROW_VELOCITY_Y * 1.45, this.inputManager.throwAimRatio);
+    return new Phaser.Math.Vector2(horizontal, lift);
+  }
+
+  private removeThrownBomb(bomb: ThrownBomb): void {
+    const idx = this.thrownBombs.indexOf(bomb);
+    if (idx !== -1) {
+      this.thrownBombs.splice(idx, 1);
+    }
+  }
+
   private checkFallRecovery(): void {
     const levelData = this.getLevelData();
     const worldHeight = levelData.height * TILE_SIZE;
@@ -397,6 +500,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.transitioning = true;
+    this.throwPreview.clear();
     this.soundMgr.gameOver();
     this.emitPortalPrompt('');
     this.scene.stop('UIScene');
@@ -468,10 +572,17 @@ export class GameScene extends Phaser.Scene {
       const gem = new Gem(this, x, y);
       this.gemSprites.push(gem);
     });
+
+    level.bombs?.forEach(spawn => {
+      const x = spawn.col * TILE_SIZE + TILE_SIZE / 2;
+      const y = (spawn.row + 1) * TILE_SIZE - 6;
+      const bomb = new Bomb(this, x, y);
+      this.bombSprites.push(bomb);
+    });
   }
 
   private onRobotHit(robot: Robot): void {
-    if (this.invincibleTimer > 0) {
+    if (this.invincibleTimer > 0 || robot.stunned) {
       return;
     }
 
@@ -491,6 +602,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.transitioning = true;
+    this.throwPreview.clear();
     this.soundMgr.portalEnter();
     this.emitPortalPrompt('');
 
@@ -500,7 +612,7 @@ export class GameScene extends Phaser.Scene {
       const nextLevel = this.currentLevel + 1;
       this.scene.start('LevelCompleteScene', {
         level: this.currentLevel,
-        gems: this.inventory.depositedGems,
+        gems: this.inventory.depositedGems + this.inventory.gems,
         carrots: this.inventory.carrots,
         nextLevel: nextLevel < LEVELS.length ? nextLevel : -1,
       });

@@ -5,6 +5,8 @@ export class Robot extends Phaser.Physics.Arcade.Sprite {
   private patrolLeftX: number;
   private patrolRightX: number;
   private direction = 1; // 1 = right, -1 = left
+  stunned = false;
+  private stunTimer?: Phaser.Time.TimerEvent;
 
   constructor(scene: Phaser.Scene, x: number, y: number, patrolLeftX: number, patrolRightX: number) {
     super(scene, x, y, 'robot');
@@ -20,7 +22,26 @@ export class Robot extends Phaser.Physics.Arcade.Sprite {
     body.setCollideWorldBounds(true);
   }
 
+  stun(duration: number): void {
+    this.stunned = true;
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    body.setVelocityX(0);
+    this.setTint(0x4488ff);
+
+    if (this.stunTimer) {
+      this.stunTimer.destroy();
+    }
+    this.stunTimer = this.scene.time.delayedCall(duration, () => {
+      this.stunned = false;
+      this.clearTint();
+    });
+  }
+
   update(): void {
+    if (this.stunned) {
+      return;
+    }
+
     const body = this.body as Phaser.Physics.Arcade.Body;
 
     // Move in current direction

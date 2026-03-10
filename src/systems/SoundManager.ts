@@ -113,4 +113,16 @@ export class SoundManager {
     // Warning beep
     this.playTone(220, 0.1, 'square', 0.08);
   }
+
+  throwBomb(): void {
+    // Whoosh sound
+    this.playTone(300, 0.2, 'sine', 0.1, 100);
+  }
+
+  bombEmp(): void {
+    // Electric crackle/zap
+    this.playTone(1200, 0.1, 'sawtooth', 0.15, 200);
+    this.playTone(800, 0.15, 'square', 0.1, 100, 0.05);
+    this.playTone(1500, 0.08, 'sawtooth', 0.1, 400, 0.1);
+  }
 }

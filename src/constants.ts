@@ -54,6 +54,7 @@ export const DIGGABLE_TILE = 8; // silica
 export const BOMB_THROW_VELOCITY_X = 350;
 export const BOMB_THROW_VELOCITY_Y = -250;
 export const BOMB_EMP_DURATION = 10000; // 10s
+export const MAX_BOMBS = 5;
 
 // Tile types
 export const TILE_TREE_TRUNK = 6;

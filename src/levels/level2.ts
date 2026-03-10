@@ -81,4 +81,9 @@ export const level2: LevelData = {
     { col: 30, row: 12, patrolLeft: 25, patrolRight: 36 },
     { col: 48, row: 12, patrolLeft: 42, patrolRight: 53 },
   ],
+  bombs: [
+    { col: 7, row: 12 },
+    { col: 23, row: 12 },
+    { col: 41, row: 12 },
+  ],
 };

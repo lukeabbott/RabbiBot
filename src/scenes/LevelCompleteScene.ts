@@ -32,7 +32,7 @@ export class LevelCompleteScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Stats
-    this.add.text(GAME_WIDTH / 2, 310, `Gems Collected: ${data.gems}`, {
+    this.add.text(GAME_WIDTH / 2, 310, `Total Gems Collected: ${data.gems}`, {
       fontSize: '18px',
       color: '#A29BFE',
       fontFamily: 'Arial',

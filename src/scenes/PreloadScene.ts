@@ -31,6 +31,10 @@ export class PreloadScene extends Phaser.Scene {
       frameWidth: 512,
       frameHeight: 512,
     });
+    this.load.spritesheet('rabbit_actions', 'assets/sprites/rabbit_actions.png', {
+      frameWidth: 512,
+      frameHeight: 512,
+    });
 
     // Processed world/item art
     this.load.image('menu_bg', 'assets/graphics/menu_bg.jpg');

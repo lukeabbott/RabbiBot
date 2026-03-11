@@ -40,6 +40,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const hasIdleRun = scene.textures.exists('rabbit_idle_run');
     const hasJump = scene.textures.exists('rabbit_jump');
     const hasReactions = scene.textures.exists('rabbit_reactions');
+    const hasActions = scene.textures.exists('rabbit_actions');
 
     const define = (key: string, frames: Phaser.Types.Animations.AnimationFrame[], frameRate: number, repeat = -1): void => {
       if (scene.anims.exists(key)) {
@@ -71,7 +72,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const waveFrames = hasReactions
       ? scene.anims.generateFrameNumbers('rabbit_reactions', { frames: [2] })
       : [{ key: 'rabbibot', frame: 'wave1' }, { key: 'rabbibot2', frame: 'wave2' }];
-    const eatFrames = hasJump
+    const eatFrames = hasActions
+      ? scene.anims.generateFrameNumbers('rabbit_actions', { frames: [3] })
+      : hasJump
       ? scene.anims.generateFrameNumbers('rabbit_jump', { frames: [0] })
       : [{ key: 'rabbibot2', frame: 'slide' }];
 

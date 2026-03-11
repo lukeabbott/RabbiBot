@@ -10,10 +10,15 @@ export class GameOverScene extends Phaser.Scene {
     this.cameras.main.fadeIn(300, 0, 0, 0);
 
     // Background
-    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_sky');
+    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'menu_bg').setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
 
     // Sad rabbit
-    const rabbit = this.add.sprite(GAME_WIDTH / 2, 200, 'rabbibot2', 'slide');
+    const rabbit = this.add.sprite(
+      GAME_WIDTH / 2,
+      200,
+      this.textures.exists('rabbit_reactions') ? 'rabbit_reactions' : 'rabbibot2',
+      this.textures.exists('rabbit_reactions') ? 1 : 'slide',
+    );
     rabbit.setScale(0.18);
 
     // Message

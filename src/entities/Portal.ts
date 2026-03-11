@@ -5,6 +5,8 @@ export class Portal extends Phaser.Physics.Arcade.Sprite {
   private gemsRequired: number;
   private gemsDeposited = 0;
   private needText!: Phaser.GameObjects.Text;
+  private readonly baseScaleX: number;
+  private readonly baseScaleY: number;
   public activated = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, gemsRequired: number) {
@@ -13,6 +15,9 @@ export class Portal extends Phaser.Physics.Arcade.Sprite {
 
     scene.add.existing(this);
     scene.physics.add.existing(this, true); // static body
+    this.setDisplaySize(64, 80);
+    this.baseScaleX = this.scaleX;
+    this.baseScaleY = this.scaleY;
 
     const body = this.body as Phaser.Physics.Arcade.StaticBody;
     body.setSize(60, 80);
@@ -49,8 +54,8 @@ export class Portal extends Phaser.Physics.Arcade.Sprite {
     // Pulse on deposit
     this.scene.tweens.add({
       targets: this,
-      scaleX: 1.1,
-      scaleY: 1.1,
+      scaleX: this.baseScaleX * 1.1,
+      scaleY: this.baseScaleY * 1.1,
       duration: 100,
       yoyo: true,
     });
@@ -79,8 +84,8 @@ export class Portal extends Phaser.Physics.Arcade.Sprite {
     // Energetic scale breathing
     this.scene.tweens.add({
       targets: this,
-      scaleX: { from: 1, to: 1.15 },
-      scaleY: { from: 1, to: 1.15 },
+      scaleX: { from: this.baseScaleX, to: this.baseScaleX * 1.15 },
+      scaleY: { from: this.baseScaleY, to: this.baseScaleY * 1.15 },
       duration: 600,
       yoyo: true,
       repeat: -1,

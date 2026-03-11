@@ -13,10 +13,15 @@ export class LevelCompleteScene extends Phaser.Scene {
     sfx.levelComplete();
 
     // Background
-    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_sky');
+    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'menu_bg').setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
 
     // Happy rabbit
-    const rabbit = this.add.sprite(GAME_WIDTH / 2, 150, 'rabbibot', 'wave1');
+    const rabbit = this.add.sprite(
+      GAME_WIDTH / 2,
+      150,
+      this.textures.exists('rabbit_reactions') ? 'rabbit_reactions' : 'rabbibot',
+      this.textures.exists('rabbit_reactions') ? 3 : 'wave1',
+    );
     rabbit.setScale(0.2);
 
     const isGameComplete = data.nextLevel === -1;

@@ -5,8 +5,11 @@ export class ThrownBomb extends Phaser.Physics.Arcade.Sprite {
     super(scene, x, y, 'bomb');
     scene.add.existing(this);
     scene.physics.add.existing(this);
+    this.setDisplaySize(24, 24);
 
     const body = this.body as Phaser.Physics.Arcade.Body;
+    body.setSize(this.displayWidth, this.displayHeight, true);
+    body.updateFromGameObject();
     body.setAllowGravity(true);
     body.setVelocity(velocityX, velocityY);
 
@@ -22,10 +25,13 @@ export class ThrownBomb extends Phaser.Physics.Arcade.Sprite {
   fizzle(): void {
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.enable = false;
+    const baseScaleX = this.scaleX;
+    const baseScaleY = this.scaleY;
     this.scene.tweens.add({
       targets: this,
       alpha: 0,
-      scale: 0.3,
+      scaleX: baseScaleX * 0.3,
+      scaleY: baseScaleY * 0.3,
       duration: 200,
       onComplete: () => this.destroy(),
     });

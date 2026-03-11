@@ -146,7 +146,7 @@ export class UIScene extends Phaser.Scene {
     const y = 58;
 
     for (let i = 0; i < visible; i++) {
-      const icon = this.add.image(startX - i * 18, y, 'carrot').setScale(0.5);
+      const icon = this.add.image(startX - i * 18, y, 'carrot').setDisplaySize(14, 18);
       this.carrotIcons.push(icon);
     }
 

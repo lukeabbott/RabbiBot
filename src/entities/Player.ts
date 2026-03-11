@@ -6,12 +6,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private inputMgr: InputManager;
   private coyoteTimer = 0;
   private hasJumped = false;
+  private hasProcessedJumpFrames: boolean;
   public onJump?: () => void;
   public isCrouching = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, inputMgr: InputManager) {
-    super(scene, x, y, 'rabbibot', 'stand1');
+    const baseTexture = scene.textures.exists('rabbit_idle_run') ? 'rabbit_idle_run' : 'rabbibot';
+    const startFrame = baseTexture === 'rabbit_idle_run' ? 0 : 'stand1';
+    super(scene, x, y, baseTexture, startFrame);
     this.inputMgr = inputMgr;
+    this.hasProcessedJumpFrames = scene.textures.exists('rabbit_jump');
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -20,63 +24,64 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setCollideWorldBounds(false);
 
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setSize(300, 550);
-    body.setOffset(58, 50);
+    if (baseTexture === 'rabbit_idle_run') {
+      body.setSize(346, 423);
+      body.setOffset(67, 38);
+    } else {
+      body.setSize(300, 550);
+      body.setOffset(58, 50);
+    }
     body.setMaxVelocityX(PLAYER_SPEED);
 
     this.createAnimations(scene);
   }
 
   private createAnimations(scene: Phaser.Scene): void {
-    if (!scene.anims.exists('idle')) {
+    const hasIdleRun = scene.textures.exists('rabbit_idle_run');
+    const hasJump = scene.textures.exists('rabbit_jump');
+    const hasReactions = scene.textures.exists('rabbit_reactions');
+
+    const define = (key: string, frames: Phaser.Types.Animations.AnimationFrame[], frameRate: number, repeat = -1): void => {
+      if (scene.anims.exists(key)) {
+        scene.anims.remove(key);
+      }
       scene.anims.create({
-        key: 'idle',
-        frames: [
-          { key: 'rabbibot', frame: 'stand1' },
-          { key: 'rabbibot2', frame: 'stand2' },
-        ],
-        frameRate: 2,
-        repeat: -1,
+        key,
+        frames,
+        frameRate,
+        repeat,
       });
-    }
-    if (!scene.anims.exists('run')) {
-      scene.anims.create({
-        key: 'run',
-        frames: [
-          { key: 'rabbibot', frame: 'run1' },
-          { key: 'rabbibot2', frame: 'run2' },
-        ],
-        frameRate: 6,
-        repeat: -1,
-      });
-    }
-    if (!scene.anims.exists('jump')) {
-      scene.anims.create({
-        key: 'jump',
-        frames: [{ key: 'rabbibot2', frame: 'wave2' }],
-        frameRate: 1,
-        repeat: 0,
-      });
-    }
-    if (!scene.anims.exists('wave')) {
-      scene.anims.create({
-        key: 'wave',
-        frames: [
-          { key: 'rabbibot', frame: 'wave1' },
-          { key: 'rabbibot2', frame: 'wave2' },
-        ],
-        frameRate: 3,
-        repeat: -1,
-      });
-    }
-    if (!scene.anims.exists('eat')) {
-      scene.anims.create({
-        key: 'eat',
-        frames: [{ key: 'rabbibot2', frame: 'slide' }],
-        frameRate: 1,
-        repeat: 0,
-      });
-    }
+    };
+
+    const idleFrames = hasIdleRun
+      ? scene.anims.generateFrameNumbers('rabbit_idle_run', { frames: [0, 1] })
+      : [{ key: 'rabbibot', frame: 'stand1' }, { key: 'rabbibot2', frame: 'stand2' }];
+    const runFrames = hasIdleRun
+      ? scene.anims.generateFrameNumbers('rabbit_idle_run', { frames: [2, 3] })
+      : [{ key: 'rabbibot', frame: 'run1' }, { key: 'rabbibot2', frame: 'run2' }];
+    const jumpUpFrames = hasJump
+      ? scene.anims.generateFrameNumbers('rabbit_jump', { frames: [1] })
+      : [{ key: 'rabbibot2', frame: 'wave2' }];
+    const jumpPeakFrames = hasJump
+      ? scene.anims.generateFrameNumbers('rabbit_jump', { frames: [2] })
+      : [{ key: 'rabbibot2', frame: 'wave2' }];
+    const fallFrames = hasJump
+      ? scene.anims.generateFrameNumbers('rabbit_jump', { frames: [3] })
+      : [{ key: 'rabbibot2', frame: 'wave2' }];
+    const waveFrames = hasReactions
+      ? scene.anims.generateFrameNumbers('rabbit_reactions', { frames: [2] })
+      : [{ key: 'rabbibot', frame: 'wave1' }, { key: 'rabbibot2', frame: 'wave2' }];
+    const eatFrames = hasJump
+      ? scene.anims.generateFrameNumbers('rabbit_jump', { frames: [0] })
+      : [{ key: 'rabbibot2', frame: 'slide' }];
+
+    define('idle', idleFrames, 2, -1);
+    define('run', runFrames, 6, -1);
+    define('jump-up', jumpUpFrames, 1, 0);
+    define('jump-peak', jumpPeakFrames, 1, 0);
+    define('fall', fallFrames, 1, 0);
+    define('wave', waveFrames, 3, -1);
+    define('eat', eatFrames, 1, 0);
   }
 
   update(delta: number): void {
@@ -122,7 +127,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Animations
     if (!onGround) {
-      this.anims.play('jump', true);
+      if (this.hasProcessedJumpFrames) {
+        if (body.velocity.y < -80) {
+          this.anims.play('jump-up', true);
+        } else if (body.velocity.y > 80) {
+          this.anims.play('fall', true);
+        } else {
+          this.anims.play('jump-peak', true);
+        }
+      } else {
+        this.anims.play('jump-up', true);
+      }
     } else if (this.inputMgr.isMoving) {
       this.anims.play('run', true);
     } else {

@@ -359,13 +359,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private animateGemDeposit(): void {
-    const gemImage = this.add.image(this.player.x, this.player.y - 10, 'gem');
+    const gemImage = this.add.sprite(this.player.x, this.player.y - 10, 'gem_sheet', 0);
+    gemImage.setDisplaySize(24, 24);
+    const baseScaleX = gemImage.scaleX;
+    const baseScaleY = gemImage.scaleY;
+    if (this.anims.exists('gem-cycle')) {
+      gemImage.play('gem-cycle');
+    }
     this.tweens.add({
       targets: gemImage,
       x: this.portal.x,
       y: this.portal.y - 20,
-      scaleX: 0.5,
-      scaleY: 0.5,
+      scaleX: baseScaleX * 0.5,
+      scaleY: baseScaleY * 0.5,
       alpha: 0.5,
       duration: 300,
       ease: 'Quad.easeIn',
@@ -509,12 +515,14 @@ export class GameScene extends Phaser.Scene {
 
   private createBackgrounds(worldWidth: number, worldHeight: number): void {
     this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_sky')
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
       .setScrollFactor(0)
       .setDepth(-30);
 
     const cityTiles = Math.ceil(worldWidth / 800) + 1;
     for (let i = 0; i < cityTiles; i++) {
       this.add.image(i * 800 + 400, worldHeight - 240, 'bg_city')
+        .setDisplaySize(800, 480)
         .setScrollFactor(0.2)
         .setDepth(-20);
     }
@@ -522,6 +530,7 @@ export class GameScene extends Phaser.Scene {
     const floraTiles = Math.ceil(worldWidth / 800) + 1;
     for (let i = 0; i < floraTiles; i++) {
       this.add.image(i * 800 + 400, worldHeight - 240, 'bg_flora')
+        .setDisplaySize(800, 480)
         .setScrollFactor(0.5)
         .setDepth(-10);
     }

@@ -17,6 +17,30 @@ export class PreloadScene extends Phaser.Scene {
     // Load sprite atlases
     this.load.atlas('rabbibot', 'assets/sprites/rabbibot.png', 'assets/sprites/rabbibot.json');
     this.load.atlas('rabbibot2', 'assets/sprites/rabbibot2.png', 'assets/sprites/rabbibot2.json');
+
+    // Processed rabbibot sheets with transparent backgrounds
+    this.load.spritesheet('rabbit_idle_run', 'assets/sprites/rabbit_idle_run.png', {
+      frameWidth: 480,
+      frameHeight: 480,
+    });
+    this.load.spritesheet('rabbit_jump', 'assets/sprites/rabbit_jump.png', {
+      frameWidth: 512,
+      frameHeight: 512,
+    });
+    this.load.spritesheet('rabbit_reactions', 'assets/sprites/rabbit_reactions.png', {
+      frameWidth: 512,
+      frameHeight: 512,
+    });
+
+    // Processed world/item art
+    this.load.image('menu_bg', 'assets/graphics/menu_bg.jpg');
+    this.load.image('carrot', 'assets/graphics/carrot.png');
+    this.load.spritesheet('gem_sheet', 'assets/graphics/gem_sheet.png', {
+      frameWidth: 480,
+      frameHeight: 480,
+    });
+    this.load.image('bomb', 'assets/graphics/bomb.png');
+    this.load.image('portal', 'assets/graphics/portal.png');
   }
 
   create(): void {
@@ -98,6 +122,10 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private generateCarrot(): void {
+    if (this.textures.exists('carrot')) {
+      return;
+    }
+
     const g = this.add.graphics();
     const w = 28, h = 36;
 
@@ -133,6 +161,10 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private generateGem(): void {
+    if (this.textures.exists('gem')) {
+      return;
+    }
+
     const g = this.add.graphics();
     const s = 24;
 
@@ -168,6 +200,10 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private generatePortal(): void {
+    if (this.textures.exists('portal')) {
+      return;
+    }
+
     const g = this.add.graphics();
     const w = 64, h = 80;
 
@@ -253,6 +289,10 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private generateBomb(): void {
+    if (this.textures.exists('bomb')) {
+      return;
+    }
+
     const g = this.add.graphics();
     const s = 24;
 
@@ -288,64 +328,70 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private generateBackgrounds(): void {
-    // Background layer 1: Gradient sky (800x480)
-    const sky = this.add.graphics();
-    const skyTop = Phaser.Display.Color.IntegerToColor(0xC8B8E0);
-    const skyBot = Phaser.Display.Color.IntegerToColor(COLORS.SKY);
-    for (let i = 0; i < 480; i++) {
-      const t = i / 480;
-      const r = Phaser.Math.Linear(skyTop.red, skyBot.red, t);
-      const g2 = Phaser.Math.Linear(skyTop.green, skyBot.green, t);
-      const b = Phaser.Math.Linear(skyTop.blue, skyBot.blue, t);
-      sky.fillStyle(Phaser.Display.Color.GetColor(r, g2, b));
-      sky.fillRect(0, i, 800, 1);
-    }
-    sky.generateTexture('bg_sky', 800, 480);
-    sky.destroy();
-
-    // Background layer 2: Distant circuit cityscape silhouettes
-    const city = this.add.graphics();
-    city.fillStyle(0xB0A0C8, 0.4);
-    // Buildings as rectangles with varying heights
-    const buildings = [
-      { x: 0, w: 60, h: 120 }, { x: 70, w: 40, h: 80 }, { x: 120, w: 70, h: 150 },
-      { x: 200, w: 50, h: 100 }, { x: 260, w: 80, h: 130 }, { x: 360, w: 45, h: 90 },
-      { x: 420, w: 65, h: 160 }, { x: 500, w: 55, h: 110 }, { x: 570, w: 75, h: 140 },
-      { x: 660, w: 50, h: 95 }, { x: 720, w: 80, h: 125 },
-    ];
-    buildings.forEach(b => {
-      city.fillRect(b.x, 480 - b.h, b.w, b.h);
-    });
-    // Circuit traces on buildings
-    city.lineStyle(1, COLORS.CIRCUIT_GOLD, 0.15);
-    buildings.forEach(b => {
-      const bTop = 480 - b.h;
-      for (let row = bTop + 20; row < 480; row += 25) {
-        city.lineBetween(b.x + 5, row, b.x + b.w - 5, row);
+    if (!this.textures.exists('bg_sky')) {
+      // Background layer 1: Gradient sky fallback (800x480)
+      const sky = this.add.graphics();
+      const skyTop = Phaser.Display.Color.IntegerToColor(0xC8B8E0);
+      const skyBot = Phaser.Display.Color.IntegerToColor(COLORS.SKY);
+      for (let i = 0; i < 480; i++) {
+        const t = i / 480;
+        const r = Phaser.Math.Linear(skyTop.red, skyBot.red, t);
+        const g2 = Phaser.Math.Linear(skyTop.green, skyBot.green, t);
+        const b = Phaser.Math.Linear(skyTop.blue, skyBot.blue, t);
+        sky.fillStyle(Phaser.Display.Color.GetColor(r, g2, b));
+        sky.fillRect(0, i, 800, 1);
       }
-    });
-    city.generateTexture('bg_city', 800, 480);
-    city.destroy();
+      sky.generateTexture('bg_sky', 800, 480);
+      sky.destroy();
+    }
 
-    // Background layer 3: Foreground circuit flora
-    const flora = this.add.graphics();
-    // Abstract circuit-plant shapes
-    flora.fillStyle(COLORS.GROUND_SURFACE, 0.3);
-    const plants = [50, 200, 380, 550, 700];
-    plants.forEach(px => {
-      // Stem
-      flora.fillRect(px, 380, 4, 100);
-      // Leaves as circles
-      flora.fillCircle(px - 8, 400, 12);
-      flora.fillCircle(px + 12, 390, 10);
-      flora.fillCircle(px, 375, 14);
-    });
-    // Circuit traces
-    flora.lineStyle(1, COLORS.CIRCUIT_GOLD, 0.2);
-    plants.forEach(px => {
-      flora.lineBetween(px + 2, 375, px + 2, 480);
-    });
-    flora.generateTexture('bg_flora', 800, 480);
-    flora.destroy();
+    if (!this.textures.exists('bg_city')) {
+      // Background layer 2: Distant circuit cityscape silhouettes fallback
+      const city = this.add.graphics();
+      city.fillStyle(0xB0A0C8, 0.4);
+      // Buildings as rectangles with varying heights
+      const buildings = [
+        { x: 0, w: 60, h: 120 }, { x: 70, w: 40, h: 80 }, { x: 120, w: 70, h: 150 },
+        { x: 200, w: 50, h: 100 }, { x: 260, w: 80, h: 130 }, { x: 360, w: 45, h: 90 },
+        { x: 420, w: 65, h: 160 }, { x: 500, w: 55, h: 110 }, { x: 570, w: 75, h: 140 },
+        { x: 660, w: 50, h: 95 }, { x: 720, w: 80, h: 125 },
+      ];
+      buildings.forEach(b => {
+        city.fillRect(b.x, 480 - b.h, b.w, b.h);
+      });
+      // Circuit traces on buildings
+      city.lineStyle(1, COLORS.CIRCUIT_GOLD, 0.15);
+      buildings.forEach(b => {
+        const bTop = 480 - b.h;
+        for (let row = bTop + 20; row < 480; row += 25) {
+          city.lineBetween(b.x + 5, row, b.x + b.w - 5, row);
+        }
+      });
+      city.generateTexture('bg_city', 800, 480);
+      city.destroy();
+    }
+
+    if (!this.textures.exists('bg_flora')) {
+      // Background layer 3: Foreground circuit flora fallback
+      const flora = this.add.graphics();
+      // Abstract circuit-plant shapes
+      flora.fillStyle(COLORS.GROUND_SURFACE, 0.3);
+      const plants = [50, 200, 380, 550, 700];
+      plants.forEach(px => {
+        // Stem
+        flora.fillRect(px, 380, 4, 100);
+        // Leaves as circles
+        flora.fillCircle(px - 8, 400, 12);
+        flora.fillCircle(px + 12, 390, 10);
+        flora.fillCircle(px, 375, 14);
+      });
+      // Circuit traces
+      flora.lineStyle(1, COLORS.CIRCUIT_GOLD, 0.2);
+      plants.forEach(px => {
+        flora.lineBetween(px + 2, 375, px + 2, 480);
+      });
+      flora.generateTexture('bg_flora', 800, 480);
+      flora.destroy();
+    }
   }
 }

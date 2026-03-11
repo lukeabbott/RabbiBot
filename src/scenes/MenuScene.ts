@@ -9,7 +9,7 @@ export class MenuScene extends Phaser.Scene {
 
   create(): void {
     // Background
-    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_sky');
+    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'menu_bg').setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
 
     // Title
     this.add.text(GAME_WIDTH / 2, 100, 'RabbiBot', {
@@ -31,24 +31,32 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // RabbiBot character display
-    const rabbit = this.add.sprite(GAME_WIDTH / 2, 280, 'rabbibot', 'stand1');
+    const rabbit = this.add.sprite(
+      GAME_WIDTH / 2,
+      280,
+      this.textures.exists('rabbit_reactions') ? 'rabbit_reactions' : 'rabbibot',
+      this.textures.exists('rabbit_reactions') ? 2 : 'wave1',
+    );
     rabbit.setScale(0.2);
 
     // Wave animation on title screen
-    if (this.anims.exists('wave')) {
-      rabbit.play('wave');
-    } else {
+    const titleWaveKey = 'menu-rabbit-wave';
+    if (!this.anims.exists(titleWaveKey)) {
       this.anims.create({
-        key: 'wave',
+        key: titleWaveKey,
         frames: [
-          { key: 'rabbibot', frame: 'wave1' },
-          { key: 'rabbibot2', frame: 'wave2' },
+          this.textures.exists('rabbit_reactions')
+            ? { key: 'rabbit_reactions', frame: 2 }
+            : { key: 'rabbibot', frame: 'wave1' },
+          this.textures.exists('rabbit_reactions')
+            ? { key: 'rabbit_reactions', frame: 3 }
+            : { key: 'rabbibot2', frame: 'wave2' },
         ],
         frameRate: 3,
         repeat: -1,
       });
-      rabbit.play('wave');
     }
+    rabbit.play(titleWaveKey);
 
     // Start prompt
     const startText = this.add.text(GAME_WIDTH / 2, 400, 'Press SPACE to Start!', {
